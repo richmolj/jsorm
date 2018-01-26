@@ -318,7 +318,7 @@ describe("nested persistence", () => {
       instance.books[0].genre.isMarkedForDestruction = true
       await instance.save({ with: { books: "genre" } })
 
-      expect(instance.books[0].genre).to.eq(null)
+      expect(instance.books[0].genre).to.eq(undefined)
     })
   })
 
@@ -429,6 +429,8 @@ describe("nested persistence", () => {
         })
 
         it("still sends if id-only", async () => {
+          instance.books
+
           await instance.save({ with: { ["books.id"]: "genre.id" } })
           expect((<any>payloads)[0].included).to.deep.eq([
             {

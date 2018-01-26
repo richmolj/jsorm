@@ -10,6 +10,7 @@ import {
   NullStorageBackend,
   StorageBackend
 } from "./credential-storage"
+import { IDMap } from "./id-map"
 
 import { deserialize, deserializeInstance } from "./util/deserialize"
 import { Attribute } from "./attribute"
@@ -141,6 +142,7 @@ export class JSORMBase {
   static jwtStorage: string | false = "jwt"
 
   private static _typeRegistry: JsonapiTypeRegistry
+  private static _IDMap: IDMap
   private static _middlewareStack: MiddlewareStack
   private static _credentialStorageBackend?: StorageBackend
   private static _credentialStorage?: CredentialStorage
@@ -214,6 +216,10 @@ export class JSORMBase {
       this._middlewareStack = new MiddlewareStack()
     }
 
+    if (!this._IDMap) {
+      this._IDMap = new IDMap()
+    }
+
     const jwt = this.credentialStorage.getJWT()
     this.setJWT(jwt)
   }
@@ -242,6 +248,14 @@ export class JSORMBase {
 
       current = current.parentClass
     }
+  }
+
+  static get store(): IDMap {
+    if (this.baseClass === undefined) {
+      throw new Error(`No base class for ${this.name}`)
+    }
+
+    return this.baseClass._IDMap
   }
 
   static get typeRegistry(): JsonapiTypeRegistry {
@@ -329,6 +343,8 @@ export class JSORMBase {
 
   id?: string
   temp_id?: string
+  stale: boolean = false
+  storeKey: string = ''
 
   @nonenumerable relationships: Record<string, JSORMBase | JSORMBase[]> = {}
   @nonenumerable klass: typeof JSORMBase
@@ -342,6 +358,7 @@ export class JSORMBase {
     JsonapiResourceIdentifier[]
   > = {}
   @nonenumerable private _attributes: ModelRecord<this>
+  @nonenumerable private _attributeOverrides: ModelRecord<this>
   @nonenumerable private _originalAttributes: ModelRecord<this>
   @nonenumerable private __meta__: any
   @nonenumerable private _errors: object = {}
@@ -357,6 +374,7 @@ export class JSORMBase {
 
   private _initializeAttributes() {
     this._attributes = {}
+    this._attributeOverrides = {}
     this._copyPrototypeDescriptors()
   }
 
@@ -405,10 +423,12 @@ export class JSORMBase {
   }
   set isPersisted(val: boolean) {
     this._persisted = val
-    this.reset()
+    if (!!val) this.reset()
   }
 
   reset() : void {
+    this.klass.store.updateOrCreate(this)
+    this._attributeOverrides = {}
     this._originalAttributes = cloneDeep(this._attributes)
     this._originalRelationships = this.relationshipResourceIdentifiers(
       Object.keys(this.relationships)
@@ -430,7 +450,11 @@ export class JSORMBase {
   }
 
   get attributes(): Record<string, any> {
-    return this._attributes
+    return Object.assign({}, this.stored, this._attributeOverrides || {})
+  }
+
+  get stored() {
+    return this.klass.store.find(this)
   }
 
   set attributes(attrs: Record<string, any>) {
@@ -703,6 +727,9 @@ export class JSORMBase {
     } catch (err) {
       throw err
     }
+
+    let base = this.klass.baseClass as typeof JSORMBase
+    base.store.destroy(this)
 
     return await this._handleResponse(response, () => {
       this.isPersisted = false

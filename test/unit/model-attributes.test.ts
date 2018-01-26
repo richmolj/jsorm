@@ -31,8 +31,6 @@ describe("Model attributes", () => {
     expect(person.attributes).to.eql({})
     person.firstName = "John"
     expect(person.attributes).to.eql({ firstName: "John" })
-    person.attributes.firstName = "Jane"
-    expect(person.firstName).to.eq("Jane")
   })
 
   it("sets attributes properties on the instance", () => {

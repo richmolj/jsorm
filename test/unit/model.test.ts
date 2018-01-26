@@ -398,14 +398,14 @@ describe("Model", () => {
        * but the type definitions were VERY complicated, and in
        * simplifying them, it was necessary to omit the case
        * where one was going FROM javascript TO typescript,
-       * which seems like a far edge case when there aren't any 
+       * which seems like a far edge case when there aren't any
        * type definitions exported by the library as well, so I'm
-       * punting on it for now until I figure out a typings fix. 
-       * 
+       * punting on it for now until I figure out a typings fix.
+       *
        * Keeping the tests around with a lot of coercion to verify
        * the underlying functionality still works from a JS-only
        * perspective.
-       * 
+       *
        */
       describe("inheritance with class-based declaration", () => {
         class ExtendedPost extends (<any>Post) {
@@ -1094,7 +1094,7 @@ describe("Model", () => {
         instance.fromJsonapi(newDoc.data as JsonapiResource, newDoc, {
           books: { genre: {} }
         })
-        expect(instance.books[0].genre).to.eq(null)
+        expect(instance.books[0].genre).to.eq(undefined)
       })
 
       describe("within a nested destruction", () => {
